@@ -1,0 +1,83 @@
+package com.example.datateman2
+
+import android.content.Context
+import androidx.appcompat.app.AppCompatActivity
+import android.os.Bundle
+import android.util.Log
+import android.widget.LinearLayout
+import android.widget.Toast
+import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.DividerItemDecoration
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.RecyclerView.ItemDecoration
+import com.example.datateman2.databinding.ActivityMainBinding
+import com.example.datateman2.databinding.ActivityMyListDataBinding
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
+
+
+class MyListData : AppCompatActivity() {
+    private var recyclerView: RecyclerView? = null
+    private var adapter: RecyclerView.Adapter<*>? = null
+    private var layoutManager: RecyclerView.LayoutManager? = null
+
+    val database = FirebaseDatabase.getInstance()
+    private var dataTeman = ArrayList<DataTeman>()
+    private var auth: FirebaseAuth? = null
+
+    private lateinit var binding: ActivityMyListDataBinding
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        binding = ActivityMyListDataBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+        recyclerView = findViewById(R.id.dataList)
+        setSupportActionBar(findViewById(R.id.my_toolbar))
+        supportActionBar!!.title = "Data Teman"
+        auth  = FirebaseAuth.getInstance()
+        MyRecyclerView()
+        GetData()
+    }
+
+    private fun GetData(){
+        Toast.makeText(applicationContext, "Mohon Tunggu Sebentar ...", Toast.LENGTH_LONG).show()
+        val getUserID: String = auth?.getCurrentUser()?.getUid().toString()
+        val getReference = database.getReference()
+        getReference.child("admin").child(getUserID).child("DataTeman2")
+            .addValueEventListener(object : ValueEventListener {
+                override fun onDataChange(dataSnapshot: DataSnapshot) {
+                    if (dataSnapshot.exists()){
+                        for (snapshot in dataSnapshot.children){
+                            val teman = snapshot.getValue(DataTeman::class.java)
+                            teman?.key = snapshot.key
+                            dataTeman.add(teman!!)
+                        }
+
+                        adapter = RecyclerViewAdaptor(dataTeman, this@MyListData)
+                        recyclerView?.adapter = adapter
+                        (adapter as RecyclerViewAdaptor).notifyDataSetChanged()
+                        Toast.makeText(applicationContext, "Data Berhasil dimuat", Toast.LENGTH_LONG).show()
+                    }
+                }
+
+                override fun onCancelled(databaseError: DatabaseError) {
+                    Toast.makeText(applicationContext, "Data Gagal Dimuat", Toast.LENGTH_LONG).show()
+                    Log.e("MyListActivity", databaseError.details + " " + databaseError.message)
+                }
+            })
+    }
+
+    private fun MyRecyclerView() {
+        layoutManager = LinearLayoutManager(this)
+        recyclerView?.layoutManager = layoutManager
+        recyclerView?.setHasFixedSize(true)
+
+        val itemDecoration = DividerItemDecoration(applicationContext, DividerItemDecoration.VERTICAL)
+        itemDecoration.setDrawable(ContextCompat.getDrawable(applicationContext, R.drawable.line)!!)
+        recyclerView?.addItemDecoration(itemDecoration)
+    }
+}
